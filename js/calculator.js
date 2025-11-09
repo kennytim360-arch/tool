@@ -1,6 +1,6 @@
 /**
- * Position Size Calculator (All-In Trading Version)
- * Calculates maximum position size and potential profit for all-in trades
+ * Stop Loss / Take Profit Calculator
+ * Strategy tester for €250 test account
  */
 
 // Initialize calculator when DOM is loaded
@@ -8,169 +8,141 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get form elements
     const form = document.getElementById('calculator-form');
     const accountBalance = document.getElementById('account-balance');
-    const leverage = document.getElementById('leverage');
     const entryPrice = document.getElementById('entry-price');
-    const exitPrice = document.getElementById('exit-price');
+    const direction = document.getElementById('direction');
     const instrumentType = document.getElementById('instrument-type');
+    const riskPercent = document.getElementById('risk-percent');
+    const rewardRatio = document.getElementById('reward-ratio');
     const resultBox = document.getElementById('result-box');
 
+    // Risk preset buttons
+    const riskPresetBtns = document.querySelectorAll('.risk-preset-btn');
+
+    // Add risk preset button handlers
+    riskPresetBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const risk = this.getAttribute('data-risk');
+            riskPercent.value = risk;
+
+            // Remove active class from all buttons
+            riskPresetBtns.forEach(b => b.style.opacity = '0.7');
+            // Add active class to clicked button
+            this.style.opacity = '1';
+
+            calculateSLTP();
+        });
+    });
+
     // Add input event listeners for real-time calculation
-    const inputs = [accountBalance, leverage, entryPrice, exitPrice, instrumentType];
+    const inputs = [accountBalance, entryPrice, direction, instrumentType, riskPercent, rewardRatio];
     inputs.forEach(input => {
-        input.addEventListener('input', calculatePositionSize);
-        input.addEventListener('change', calculatePositionSize);
+        input.addEventListener('input', calculateSLTP);
+        input.addEventListener('change', calculateSLTP);
     });
 
     // Form submit handler
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            calculatePositionSize();
+            calculateSLTP();
         });
     }
 
     /**
      * Main calculation function
      */
-    function calculatePositionSize() {
+    function calculateSLTP() {
         // Get input values
         const balance = parseFloat(accountBalance.value);
-        const leverageValue = parseFloat(leverage.value);
         const entry = parseFloat(entryPrice.value);
-        const exit = parseFloat(exitPrice.value);
+        const dir = direction.value;
         const instrument = instrumentType.value;
+        const risk = parseFloat(riskPercent.value);
+        const reward = parseFloat(rewardRatio.value);
 
         // Validate inputs
-        if (!validateInputs(balance, leverageValue, entry, exit)) {
+        if (!validateInputs(balance, entry, risk)) {
             hideResults();
             return;
         }
 
-        // Determine trade direction
-        const direction = exit > entry ? 'LONG' : 'SHORT';
-        const priceDiff = Math.abs(exit - entry);
+        // Calculate risk amount in euros
+        const riskAmount = balance * (risk / 100);
+        const rewardAmount = riskAmount * reward;
 
-        // Calculate price difference percentage
-        const priceChangePercent = (priceDiff / entry) * 100;
+        // Calculate Stop Loss and Take Profit prices
+        let stopLoss, takeProfit;
+        const riskDecimal = risk / 100;
 
-        // Calculate buying power with leverage
-        const buyingPower = balance * leverageValue;
-
-        // Calculate position size based on instrument type
-        let positionSize;
-        let unit;
-        let marginRequired;
-        let potentialProfit;
-        let potentialProfitPercent;
-        let additionalInfo = '';
-
-        switch(instrument) {
-            case 'forex':
-                // For Forex: Calculate in lots
-                // 1 standard lot = 100,000 units
-                // Position size in units = Buying Power / Entry Price
-                const positionUnits = buyingPower / entry;
-                positionSize = positionUnits / 100000; // Convert to standard lots
-                positionSize = Math.round(positionSize * 100) / 100; // Round to 2 decimals
-
-                // Calculate potential profit
-                // For forex, pip value for 1 lot = $10 (for most pairs)
-                const pips = (priceDiff / 0.0001);
-                potentialProfit = positionSize * pips * 10; // $10 per pip per lot
-
-                unit = 'lots';
-                marginRequired = (positionSize * 100000 * entry) / leverageValue;
-                additionalInfo = `${pips.toFixed(1)} pips target | ${positionUnits.toLocaleString()} units`;
-                break;
-
-            case 'stocks':
-                // For stocks: Calculate number of shares
-                positionSize = Math.floor(buyingPower / entry);
-                potentialProfit = positionSize * priceDiff;
-
-                unit = 'shares';
-                marginRequired = (positionSize * entry) / leverageValue;
-                additionalInfo = `Price move: $${priceDiff.toFixed(2)} per share`;
-                break;
-
-            case 'indices':
-                // For indices: Similar to stocks but allow decimals
-                positionSize = buyingPower / entry;
-                positionSize = Math.round(positionSize * 10) / 10; // Round to 1 decimal
-                potentialProfit = positionSize * priceDiff;
-
-                unit = 'units';
-                marginRequired = (positionSize * entry) / leverageValue;
-                additionalInfo = `Price move: ${priceDiff.toFixed(2)} points`;
-                break;
-
-            case 'crypto':
-                // For crypto: Calculate with more precision
-                positionSize = buyingPower / entry;
-                positionSize = Math.round(positionSize * 1000) / 1000; // Round to 3 decimals
-                potentialProfit = positionSize * priceDiff;
-
-                unit = 'units';
-                marginRequired = (positionSize * entry) / leverageValue;
-                additionalInfo = `Price move: $${priceDiff.toFixed(2)}`;
-                break;
-
-            default:
-                showError('Invalid instrument type');
-                return;
+        if (dir === 'long') {
+            // LONG position
+            stopLoss = entry * (1 - riskDecimal);
+            takeProfit = entry * (1 + (riskDecimal * reward));
+        } else {
+            // SHORT position
+            stopLoss = entry * (1 + riskDecimal);
+            takeProfit = entry * (1 - (riskDecimal * reward));
         }
 
-        // Calculate position value
-        const positionValue = instrument === 'forex'
-            ? positionSize * 100000 * entry
-            : positionSize * entry;
+        // Calculate distance in pips/points
+        let slDistance, tpDistance, unit;
 
-        // Calculate potential profit as percentage of account
-        potentialProfitPercent = (potentialProfit / balance) * 100;
+        if (instrument === 'forex') {
+            // Forex: calculate in pips (1 pip = 0.0001)
+            slDistance = Math.abs(entry - stopLoss) * 10000;
+            tpDistance = Math.abs(takeProfit - entry) * 10000;
+            unit = 'pips';
+        } else {
+            // Stocks/Indices/Crypto: calculate in points or dollars
+            slDistance = Math.abs(entry - stopLoss);
+            tpDistance = Math.abs(takeProfit - entry);
+            unit = instrument === 'crypto' ? '$' : 'points';
+        }
 
-        // Calculate potential ROI
-        const roi = (potentialProfit / balance) * 100;
+        // Calculate new balances after win/loss
+        const newBalanceWin = balance + rewardAmount;
+        const newBalanceLoss = balance - riskAmount;
 
-        // Calculate risk of margin call (approximate)
-        const priceMovementForMarginCall = (balance / positionSize);
-        const marginCallPercent = (priceMovementForMarginCall / entry) * 100;
+        // Calculate survival (consecutive losses until bust)
+        const consecutiveLosses = Math.floor(100 / risk);
+
+        // Calculate win rate needed for profitability
+        const winRateNeeded = (1 / (1 + reward)) * 100;
 
         // Display results
         displayResults({
-            positionSize,
+            stopLoss,
+            takeProfit,
+            slDistance,
+            tpDistance,
             unit,
-            potentialProfit,
-            potentialProfitPercent,
-            roi,
-            positionValue,
-            marginRequired,
-            buyingPower,
-            additionalInfo,
-            direction,
-            priceChangePercent,
-            marginCallPercent,
-            leverage: leverageValue,
-            balance
+            riskAmount,
+            rewardAmount,
+            newBalanceWin,
+            newBalanceLoss,
+            direction: dir.toUpperCase(),
+            entry,
+            balance,
+            risk,
+            reward,
+            consecutiveLosses,
+            winRateNeeded,
+            instrument
         });
     }
 
     /**
      * Validate input values
      */
-    function validateInputs(balance, leverage, entry, exit) {
+    function validateInputs(balance, entry, risk) {
         if (isNaN(balance) || balance <= 0) {
-            return false;
-        }
-        if (isNaN(leverage) || leverage <= 0) {
             return false;
         }
         if (isNaN(entry) || entry <= 0) {
             return false;
         }
-        if (isNaN(exit) || exit <= 0) {
-            return false;
-        }
-        if (entry === exit) {
+        if (isNaN(risk) || risk <= 0 || risk > 100) {
             return false;
         }
         return true;
@@ -183,88 +155,165 @@ document.addEventListener('DOMContentLoaded', function() {
         resultBox.style.display = 'block';
         resultBox.className = 'result-box fade-in';
 
-        const profitColor = data.potentialProfit >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        const directionColor = data.direction === 'LONG' ? 'var(--success-color)' : 'var(--danger-color)';
+
+        // Determine risk level color
+        let riskLevelColor = 'var(--success-color)';
+        let riskLevelText = 'Conservative';
+        if (data.risk >= 15) {
+            riskLevelColor = 'var(--danger-color)';
+            riskLevelText = 'Aggressive';
+        } else if (data.risk >= 10) {
+            riskLevelColor = 'var(--warning-color)';
+            riskLevelText = 'Balanced';
+        }
 
         resultBox.innerHTML = `
-            <h3>Maximum Position Size & Profit Potential</h3>
+            <h3>Stop Loss & Take Profit Levels</h3>
 
-            <div class="result-item">
-                <span class="result-label">Position Size:</span>
-                <span class="result-value large">${data.positionSize.toLocaleString()} ${data.unit}</span>
+            <div style="background: ${directionColor}; background: linear-gradient(135deg, ${directionColor}22, ${directionColor}11);
+                        border-left: 4px solid ${directionColor}; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Trade Direction</span>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: ${directionColor};">
+                            ${data.direction}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Entry Price</span>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
+                            ${data.entry.toFixed(5)}
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="result-item">
-                <span class="result-label">Trade Direction:</span>
-                <span class="result-value" style="color: ${data.direction === 'LONG' ? 'var(--success-color)' : 'var(--danger-color)'}">
-                    ${data.direction}
-                </span>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div style="background: #fee2e2; padding: 15px; border-radius: 8px; border-left: 4px solid var(--danger-color);">
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">
+                        🛑 Stop Loss
+                    </div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: var(--danger-color);">
+                        ${data.stopLoss.toFixed(5)}
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                        ${data.slDistance.toFixed(data.unit === 'pips' ? 1 : 2)} ${data.unit} ${data.direction === 'LONG' ? 'below' : 'above'} entry
+                    </div>
+                </div>
+
+                <div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid var(--success-color);">
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">
+                        🎯 Take Profit
+                    </div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: var(--success-color);">
+                        ${data.takeProfit.toFixed(5)}
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                        ${data.tpDistance.toFixed(data.unit === 'pips' ? 1 : 2)} ${data.unit} ${data.direction === 'LONG' ? 'above' : 'below'} entry
+                    </div>
+                </div>
             </div>
 
-            <div class="result-item">
-                <span class="result-label">Position Value:</span>
-                <span class="result-value">$${data.positionValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
+            <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
+                <h3 style="margin-bottom: 15px;">Potential Outcomes</h3>
 
-            <div class="result-item">
-                <span class="result-label">Buying Power (${data.leverage}x):</span>
-                <span class="result-value">$${data.buyingPower.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-
-            <div class="result-item">
-                <span class="result-label">Margin Required:</span>
-                <span class="result-value">$${data.marginRequired.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-
-            <div style="border-top: 2px solid var(--primary-color); margin: 20px 0; padding-top: 20px;">
                 <div class="result-item">
-                    <span class="result-label">Potential Profit:</span>
-                    <span class="result-value large" style="color: ${profitColor}">
-                        $${data.potentialProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    <span class="result-label">Risk Amount:</span>
+                    <span class="result-value" style="color: var(--danger-color);">
+                        -€${data.riskAmount.toFixed(2)} (${data.risk}%)
                     </span>
                 </div>
 
                 <div class="result-item">
-                    <span class="result-label">Profit % of Account:</span>
-                    <span class="result-value" style="color: ${profitColor}">
-                        ${data.potentialProfitPercent.toFixed(2)}%
+                    <span class="result-label">Reward Amount:</span>
+                    <span class="result-value" style="color: var(--success-color);">
+                        +€${data.rewardAmount.toFixed(2)} (${(data.rewardAmount/data.balance*100).toFixed(1)}%)
                     </span>
                 </div>
 
                 <div class="result-item">
-                    <span class="result-label">ROI on Capital:</span>
-                    <span class="result-value" style="color: ${profitColor}">
-                        ${data.roi.toFixed(2)}%
+                    <span class="result-label">Reward Ratio:</span>
+                    <span class="result-value">1:${data.reward}</span>
+                </div>
+
+                <div class="grid grid-2" style="margin-top: 20px; gap: 10px;">
+                    <div style="background: #fee2e2; padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                            If Stop Loss Hit
+                        </div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--danger-color);">
+                            €${data.newBalanceLoss.toFixed(2)}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                            -€${data.riskAmount.toFixed(2)}
+                        </div>
+                    </div>
+
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                            If Take Profit Hit
+                        </div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--success-color);">
+                            €${data.newBalanceWin.toFixed(2)}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                            +€${data.rewardAmount.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
+                <h3 style="margin-bottom: 15px;">Strategy Statistics</h3>
+
+                <div class="result-item">
+                    <span class="result-label">Risk Level:</span>
+                    <span class="status-indicator" style="background-color: ${riskLevelColor}22; color: ${riskLevelColor}; border: 2px solid ${riskLevelColor};">
+                        ${riskLevelText}
                     </span>
                 </div>
 
                 <div class="result-item">
-                    <span class="result-label">Target Price Move:</span>
-                    <span class="result-value">${data.priceChangePercent.toFixed(2)}%</span>
+                    <span class="result-label">Consecutive Losses Until Bust:</span>
+                    <span class="result-value">${data.consecutiveLosses} trades</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">Win Rate Needed for Profit:</span>
+                    <span class="result-value">${data.winRateNeeded.toFixed(1)}%</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">Account Balance:</span>
+                    <span class="result-value">€${data.balance.toFixed(2)}</span>
                 </div>
             </div>
 
-            <div class="result-item">
-                <span class="result-label">Additional Info:</span>
-                <span class="result-value" style="font-size: 1rem;">${data.additionalInfo}</span>
-            </div>
-
-            ${data.marginCallPercent < 5 ? `
+            ${data.consecutiveLosses <= 5 ? `
                 <div class="alert alert-danger mt-20">
-                    <strong>🚨 EXTREME RISK:</strong> With this leverage, a price move of only ${data.marginCallPercent.toFixed(2)}%
-                    against your position could trigger a margin call and wipe out your account!
+                    <strong>🚨 EXTREME RISK:</strong> With ${data.risk}% risk per trade, you can only survive
+                    ${data.consecutiveLosses} consecutive losses before your account is wiped out!
+                    Consider reducing your risk percentage.
                 </div>
-            ` : data.marginCallPercent < 10 ? `
+            ` : data.consecutiveLosses <= 10 ? `
                 <div class="alert alert-warning mt-20">
-                    <strong>⚠️ HIGH RISK:</strong> A price move of ${data.marginCallPercent.toFixed(2)}% against your position
-                    could trigger a margin call. Monitor your trade closely!
+                    <strong>⚠️ HIGH RISK:</strong> You can survive ${data.consecutiveLosses} consecutive losses.
+                    This is acceptable for testing, but monitor your win rate carefully.
                 </div>
             ` : ''}
 
             <div class="alert alert-info mt-20">
-                <strong>💡 Summary:</strong> You can buy ${data.positionSize.toLocaleString()} ${data.unit}
-                using ${data.leverage}x leverage. If your target is hit, you'll make
-                $${data.potentialProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                (${data.roi.toFixed(2)}% ROI).
+                <strong>💡 Quick Copy for Broker:</strong><br>
+                ${data.direction} @ ${data.entry.toFixed(5)}<br>
+                SL: ${data.stopLoss.toFixed(5)} | TP: ${data.takeProfit.toFixed(5)}<br>
+                Risk: €${data.riskAmount.toFixed(2)} (${data.risk}%) | Reward: €${data.rewardAmount.toFixed(2)} (1:${data.reward})
+            </div>
+
+            <div class="alert alert-success mt-20">
+                <strong>📊 Strategy Test Tracking:</strong><br>
+                Use the <a href="loss-monitor.html" style="color: var(--success-color); font-weight: 700;">Daily Loss Monitor</a>
+                to log this trade and track your testing progress. Record whether SL or TP was hit!
             </div>
         `;
     }
@@ -301,7 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const values = JSON.parse(saved);
                 if (values.accountBalance) accountBalance.value = values.accountBalance;
-                if (values.leverage) leverage.value = values.leverage;
+                if (values.riskPercent) riskPercent.value = values.riskPercent;
+                if (values.rewardRatio) rewardRatio.value = values.rewardRatio;
                 if (values.instrumentType) instrumentType.value = values.instrumentType;
             } catch (e) {
                 console.error('Error loading saved values:', e);
@@ -315,7 +365,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveValues() {
         const values = {
             accountBalance: accountBalance.value,
-            leverage: leverage.value,
+            riskPercent: riskPercent.value,
+            rewardRatio: rewardRatio.value,
             instrumentType: instrumentType.value
         };
         localStorage.setItem('calculatorValues', JSON.stringify(values));
@@ -323,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Save values on input change
     accountBalance.addEventListener('change', saveValues);
-    leverage.addEventListener('change', saveValues);
+    riskPercent.addEventListener('change', saveValues);
+    rewardRatio.addEventListener('change', saveValues);
     instrumentType.addEventListener('change', saveValues);
 });
