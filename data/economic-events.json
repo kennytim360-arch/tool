@@ -1,0 +1,60 @@
+{
+  "info": "Sample economic events data - Update with real data from economic calendar APIs",
+  "lastUpdate": "2024-11-09",
+  "events": [
+    {
+      "date": "2024-11-09",
+      "time": "08:30",
+      "currency": "USD",
+      "event": "Non-Farm Payrolls",
+      "impact": "high",
+      "forecast": "200K",
+      "previous": "263K"
+    },
+    {
+      "date": "2024-11-09",
+      "time": "10:00",
+      "currency": "USD",
+      "event": "ISM Manufacturing PMI",
+      "impact": "high",
+      "forecast": "49.8",
+      "previous": "50.2"
+    },
+    {
+      "date": "2024-11-09",
+      "time": "12:30",
+      "currency": "EUR",
+      "event": "ECB Interest Rate Decision",
+      "impact": "high",
+      "forecast": "4.25%",
+      "previous": "4.50%"
+    },
+    {
+      "date": "2024-11-09",
+      "time": "14:00",
+      "currency": "GBP",
+      "event": "BOE Interest Rate Decision",
+      "impact": "high",
+      "forecast": "5.25%",
+      "previous": "5.25%"
+    },
+    {
+      "date": "2024-11-10",
+      "time": "08:30",
+      "currency": "USD",
+      "event": "Initial Jobless Claims",
+      "impact": "medium",
+      "forecast": "230K",
+      "previous": "228K"
+    },
+    {
+      "date": "2024-11-10",
+      "time": "10:00",
+      "currency": "USD",
+      "event": "Consumer Confidence",
+      "impact": "medium",
+      "forecast": "103.0",
+      "previous": "102.6"
+    }
+  ]
+}

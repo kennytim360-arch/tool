@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economic Calendar - CFD Trading Toolkit</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📅 Economic Calendar</h1>
+            <p>Stay aware of high-impact news events that drive market volatility</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="index.html" class="nav-btn">Dashboard</a>
+            <a href="position-calculator.html" class="nav-btn">Position Calculator</a>
+            <a href="loss-monitor.html" class="nav-btn">Loss Monitor</a>
+            <a href="economic-calendar.html" class="nav-btn active">Economic Calendar</a>
+        </div>
+
+        <!-- Message Area -->
+        <div id="message" style="display: none;"></div>
+
+        <!-- Filters Card -->
+        <div class="card">
+            <h2>Filter Events</h2>
+
+            <div class="grid grid-3">
+                <div class="form-group">
+                    <label for="filter-impact">Impact Level</label>
+                    <select id="filter-impact">
+                        <option value="all">All Impact</option>
+                        <option value="high">High Impact Only</option>
+                        <option value="medium">Medium Impact Only</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-currency">Currency</label>
+                    <select id="filter-currency">
+                        <option value="all">All Currencies</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CHF">CHF</option>
+                        <option value="CAD">CAD</option>
+                        <option value="AUD">AUD</option>
+                        <option value="NZD">NZD</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-date">Date Range</label>
+                    <select id="filter-date">
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="all">Today & Tomorrow</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <button id="refresh-btn" class="btn btn-primary">Refresh Events</button>
+                <button id="add-event-btn" class="btn btn-secondary">Add Manual Event</button>
+            </div>
+        </div>
+
+        <!-- Add Event Form (Hidden by default) -->
+        <div id="add-event-section" class="card" style="display: none;">
+            <h2>Add Manual Event</h2>
+
+            <form id="add-event-form">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="event-date">Date *</label>
+                        <input type="date" id="event-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-time">Time *</label>
+                        <input type="time" id="event-time" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-currency">Currency *</label>
+                        <select id="event-currency" required>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                            <option value="JPY">JPY</option>
+                            <option value="CHF">CHF</option>
+                            <option value="CAD">CAD</option>
+                            <option value="AUD">AUD</option>
+                            <option value="NZD">NZD</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-impact">Impact *</label>
+                        <select id="event-impact" required>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-name">Event Name *</label>
+                        <input type="text" id="event-name" placeholder="e.g., Non-Farm Payrolls" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-forecast">Forecast (optional)</label>
+                        <input type="text" id="event-forecast" placeholder="e.g., 200K">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-previous">Previous (optional)</label>
+                        <input type="text" id="event-previous" placeholder="e.g., 263K">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="submit" class="btn btn-success">Add Event</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-event-section').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Events Display Card -->
+        <div class="card">
+            <h2>Upcoming Events</h2>
+
+            <div class="alert alert-info">
+                <strong>🔔 Trading Tips:</strong><br>
+                • Avoid trading 15 minutes before and after high-impact events<br>
+                • Tighten stops or close positions during major announcements<br>
+                • Expect increased volatility and wider spreads<br>
+                • Central bank decisions and employment data have highest impact
+            </div>
+
+            <div id="events-container" style="margin-top: 20px;">
+                <p class="text-center" style="color: var(--text-secondary); padding: 20px;">
+                    Loading events...
+                </p>
+            </div>
+        </div>
+
+        <!-- Impact Legend -->
+        <div class="card">
+            <h2>Impact Level Guide</h2>
+
+            <div class="grid grid-2">
+                <div class="event-item high-impact">
+                    <div style="font-weight: 700; color: var(--danger-color); margin-bottom: 8px;">
+                        🔴 HIGH IMPACT
+                    </div>
+                    <p style="color: var(--text-secondary); line-height: 1.8;">
+                        Major market movers. Can cause 50-200+ pip moves in forex pairs.
+                        Examples: Non-Farm Payrolls, Central Bank Rate Decisions, GDP, CPI
+                    </p>
+                </div>
+
+                <div class="event-item medium-impact">
+                    <div style="font-weight: 700; color: var(--warning-color); margin-bottom: 8px;">
+                        🟡 MEDIUM IMPACT
+                    </div>
+                    <p style="color: var(--text-secondary); line-height: 1.8;">
+                        Moderate market influence. Can cause 20-50 pip moves.
+                        Examples: Jobless Claims, Manufacturing PMI, Consumer Confidence
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Major Events Reference -->
+        <div class="card">
+            <h2>Most Important Economic Events</h2>
+
+            <div style="background: var(--bg-color); padding: 20px; border-radius: 8px;">
+                <h3>🇺🇸 United States (USD)</h3>
+                <ul style="line-height: 2; color: var(--text-secondary); margin-bottom: 20px;">
+                    <li><strong>Non-Farm Payrolls (NFP)</strong> - First Friday of month, 8:30 AM ET</li>
+                    <li><strong>FOMC Interest Rate Decision</strong> - Every 6 weeks</li>
+                    <li><strong>CPI (Inflation)</strong> - Mid-month, 8:30 AM ET</li>
+                    <li><strong>GDP</strong> - Quarterly, 8:30 AM ET</li>
+                </ul>
+
+                <h3>🇪🇺 Eurozone (EUR)</h3>
+                <ul style="line-height: 2; color: var(--text-secondary); margin-bottom: 20px;">
+                    <li><strong>ECB Interest Rate Decision</strong> - Every 6 weeks</li>
+                    <li><strong>German GDP</strong> - Quarterly</li>
+                    <li><strong>ECB Press Conference</strong> - After rate decisions</li>
+                </ul>
+
+                <h3>🇬🇧 United Kingdom (GBP)</h3>
+                <ul style="line-height: 2; color: var(--text-secondary); margin-bottom: 20px;">
+                    <li><strong>BOE Interest Rate Decision</strong> - Monthly</li>
+                    <li><strong>UK CPI</strong> - Monthly</li>
+                    <li><strong>UK Employment Data</strong> - Monthly</li>
+                </ul>
+
+                <h3>🇯🇵 Japan (JPY)</h3>
+                <ul style="line-height: 2; color: var(--text-secondary);">
+                    <li><strong>BOJ Interest Rate Decision</strong> - Every 6-8 weeks</li>
+                    <li><strong>Tankan Survey</strong> - Quarterly</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/calendar.js"></script>
+</body>
+</html>

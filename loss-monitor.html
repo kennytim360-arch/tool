@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Loss Limit Monitor - CFD Trading Toolkit</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛡️ Daily Loss Limit Monitor</h1>
+            <p>Track your daily P&L and prevent emotional revenge trading</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="index.html" class="nav-btn">Dashboard</a>
+            <a href="position-calculator.html" class="nav-btn">Position Calculator</a>
+            <a href="loss-monitor.html" class="nav-btn active">Loss Monitor</a>
+            <a href="economic-calendar.html" class="nav-btn">Economic Calendar</a>
+        </div>
+
+        <!-- Message Area -->
+        <div id="message" style="display: none;"></div>
+
+        <!-- Setup Card -->
+        <div class="card">
+            <h2>Setup Daily Limits</h2>
+
+            <form id="setup-form">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="setup-balance">Account Balance ($) *</label>
+                        <input
+                            type="number"
+                            id="setup-balance"
+                            placeholder="10000"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="limit-type">Limit Type *</label>
+                        <select id="limit-type" required>
+                            <option value="fixed">Fixed Amount ($)</option>
+                            <option value="percent">Percentage (%)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="limit-value">Daily Loss Limit *</label>
+                        <input
+                            type="number"
+                            id="limit-value"
+                            placeholder="200"
+                            step="0.01"
+                            min="0"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Setup</button>
+            </form>
+
+            <div class="alert alert-info mt-20">
+                <strong>💡 Recommended Limits:</strong><br>
+                • Conservative: 2-3% of account balance per day<br>
+                • Moderate: 5% of account balance per day<br>
+                • Aggressive: 7-10% of account balance per day
+            </div>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="card">
+            <h2>Daily Summary</h2>
+            <div id="summary">
+                <p class="text-center" style="color: var(--text-secondary); padding: 20px;">
+                    Configure your daily limits above to start tracking
+                </p>
+            </div>
+        </div>
+
+        <!-- Add Trade Card -->
+        <div class="card">
+            <h2>Record Trade</h2>
+
+            <form id="trade-form">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="trade-result">Trade Result ($) *</label>
+                        <input
+                            type="number"
+                            id="trade-result"
+                            placeholder="-50 or +100"
+                            step="0.01"
+                            required
+                        >
+                        <small style="color: var(--text-secondary);">
+                            Enter positive for wins, negative for losses
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="trade-notes">Notes (optional)</label>
+                        <input
+                            type="text"
+                            id="trade-notes"
+                            placeholder="e.g., EUR/USD long, breakout trade"
+                        >
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary">Add Trade</button>
+                    <button type="button" id="reset-day-btn" class="btn btn-warning">Reset Day</button>
+                    <button type="button" id="clear-history-btn" class="btn btn-danger">Clear All Data</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="card">
+            <h2>Today's Statistics</h2>
+            <div id="stats">
+                <p class="text-center" style="color: var(--text-secondary); padding: 20px;">
+                    No trades recorded yet
+                </p>
+            </div>
+        </div>
+
+        <!-- Trade History Card -->
+        <div class="card">
+            <h2>Trade History</h2>
+            <div id="trade-history">
+                <p class="text-center" style="color: var(--text-secondary); padding: 20px;">
+                    No trades recorded today
+                </p>
+            </div>
+        </div>
+
+        <!-- Trading Psychology Tips -->
+        <div class="card">
+            <h2>Trading Psychology Tips</h2>
+
+            <div class="grid grid-2">
+                <div>
+                    <h3>🧠 Mental Discipline</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Stop trading when limit is reached</li>
+                        <li>Take breaks after losing streaks</li>
+                        <li>Don't revenge trade to recover losses</li>
+                        <li>Keep emotions out of trading decisions</li>
+                        <li>Review trades objectively</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>📊 Loss Management</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Accept losses as part of trading</li>
+                        <li>Focus on process, not outcomes</li>
+                        <li>Reduce position size after losses</li>
+                        <li>Keep a trading journal</li>
+                        <li>Learn from every losing trade</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="alert alert-warning mt-20">
+                <strong>⚠️ Warning Signs of Revenge Trading:</strong><br>
+                • Trading larger positions after a loss<br>
+                • Taking low-probability setups<br>
+                • Ignoring your trading plan<br>
+                • Feeling angry or frustrated<br>
+                • Trying to "get even" before day ends
+            </div>
+        </div>
+    </div>
+
+    <script src="js/monitor.js"></script>
+</body>
+</html>
