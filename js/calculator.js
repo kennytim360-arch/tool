@@ -1,6 +1,6 @@
 /**
- * Position Size Calculator
- * Calculates optimal position size based on account balance, risk percentage, and stop loss
+ * Position Size Calculator (All-In Trading Version)
+ * Calculates maximum position size and potential profit for all-in trades
  */
 
 // Initialize calculator when DOM is loaded
@@ -8,14 +8,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get form elements
     const form = document.getElementById('calculator-form');
     const accountBalance = document.getElementById('account-balance');
-    const riskPercent = document.getElementById('risk-percent');
+    const leverage = document.getElementById('leverage');
     const entryPrice = document.getElementById('entry-price');
-    const stopLoss = document.getElementById('stop-loss');
+    const exitPrice = document.getElementById('exit-price');
     const instrumentType = document.getElementById('instrument-type');
     const resultBox = document.getElementById('result-box');
 
     // Add input event listeners for real-time calculation
-    const inputs = [accountBalance, riskPercent, entryPrice, stopLoss, instrumentType];
+    const inputs = [accountBalance, leverage, entryPrice, exitPrice, instrumentType];
     inputs.forEach(input => {
         input.addEventListener('input', calculatePositionSize);
         input.addEventListener('change', calculatePositionSize);
@@ -35,69 +35,84 @@ document.addEventListener('DOMContentLoaded', function() {
     function calculatePositionSize() {
         // Get input values
         const balance = parseFloat(accountBalance.value);
-        const risk = parseFloat(riskPercent.value);
+        const leverageValue = parseFloat(leverage.value);
         const entry = parseFloat(entryPrice.value);
-        const stop = parseFloat(stopLoss.value);
+        const exit = parseFloat(exitPrice.value);
         const instrument = instrumentType.value;
 
         // Validate inputs
-        if (!validateInputs(balance, risk, entry, stop)) {
+        if (!validateInputs(balance, leverageValue, entry, exit)) {
             hideResults();
             return;
         }
 
-        // Calculate risk amount
-        const riskAmount = balance * (risk / 100);
+        // Determine trade direction
+        const direction = exit > entry ? 'LONG' : 'SHORT';
+        const priceDiff = Math.abs(exit - entry);
 
-        // Calculate price difference (stop loss distance)
-        const priceDiff = Math.abs(entry - stop);
+        // Calculate price difference percentage
+        const priceChangePercent = (priceDiff / entry) * 100;
 
-        // Validate price difference
-        if (priceDiff === 0) {
-            showError('Entry price and stop loss cannot be the same');
-            return;
-        }
+        // Calculate buying power with leverage
+        const buyingPower = balance * leverageValue;
 
         // Calculate position size based on instrument type
         let positionSize;
         let unit;
+        let marginRequired;
+        let potentialProfit;
+        let potentialProfitPercent;
         let additionalInfo = '';
 
         switch(instrument) {
             case 'forex':
-                // Standard lot = 100,000 units
-                // Position Size = Risk Amount / (Stop Loss in Pips × Pip Value)
-                // Assuming 1 pip = 0.0001 for most pairs
-                const pips = priceDiff / 0.0001;
-                const pipValue = 10; // $10 per pip for standard lot
-                positionSize = riskAmount / (pips * pipValue) * 100; // Convert to lots
-                positionSize = Math.max(0.01, Math.round(positionSize * 100) / 100);
+                // For Forex: Calculate in lots
+                // 1 standard lot = 100,000 units
+                // Position size in units = Buying Power / Entry Price
+                const positionUnits = buyingPower / entry;
+                positionSize = positionUnits / 100000; // Convert to standard lots
+                positionSize = Math.round(positionSize * 100) / 100; // Round to 2 decimals
+
+                // Calculate potential profit
+                // For forex, pip value for 1 lot = $10 (for most pairs)
+                const pips = (priceDiff / 0.0001);
+                potentialProfit = positionSize * pips * 10; // $10 per pip per lot
+
                 unit = 'lots';
-                additionalInfo = `Stop Loss Distance: ${pips.toFixed(1)} pips`;
+                marginRequired = (positionSize * 100000 * entry) / leverageValue;
+                additionalInfo = `${pips.toFixed(1)} pips target | ${positionUnits.toLocaleString()} units`;
                 break;
 
             case 'stocks':
-                // Position Size = Risk Amount / Price Difference
-                positionSize = riskAmount / priceDiff;
-                positionSize = Math.max(1, Math.round(positionSize));
+                // For stocks: Calculate number of shares
+                positionSize = Math.floor(buyingPower / entry);
+                potentialProfit = positionSize * priceDiff;
+
                 unit = 'shares';
-                additionalInfo = `Price Distance: $${priceDiff.toFixed(2)}`;
+                marginRequired = (positionSize * entry) / leverageValue;
+                additionalInfo = `Price move: $${priceDiff.toFixed(2)} per share`;
                 break;
 
             case 'indices':
-                // Similar to stocks but can have fractional units
-                positionSize = riskAmount / priceDiff;
-                positionSize = Math.max(0.1, Math.round(positionSize * 10) / 10);
+                // For indices: Similar to stocks but allow decimals
+                positionSize = buyingPower / entry;
+                positionSize = Math.round(positionSize * 10) / 10; // Round to 1 decimal
+                potentialProfit = positionSize * priceDiff;
+
                 unit = 'units';
-                additionalInfo = `Price Distance: ${priceDiff.toFixed(2)} points`;
+                marginRequired = (positionSize * entry) / leverageValue;
+                additionalInfo = `Price move: ${priceDiff.toFixed(2)} points`;
                 break;
 
             case 'crypto':
-                // Crypto can have very small or very large values
-                positionSize = riskAmount / priceDiff;
-                positionSize = Math.max(0.001, Math.round(positionSize * 1000) / 1000);
+                // For crypto: Calculate with more precision
+                positionSize = buyingPower / entry;
+                positionSize = Math.round(positionSize * 1000) / 1000; // Round to 3 decimals
+                potentialProfit = positionSize * priceDiff;
+
                 unit = 'units';
-                additionalInfo = `Price Distance: $${priceDiff.toFixed(2)}`;
+                marginRequired = (positionSize * entry) / leverageValue;
+                additionalInfo = `Price move: $${priceDiff.toFixed(2)}`;
                 break;
 
             default:
@@ -105,37 +120,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
         }
 
-        // Calculate total position value
+        // Calculate position value
         const positionValue = instrument === 'forex'
             ? positionSize * 100000 * entry
             : positionSize * entry;
+
+        // Calculate potential profit as percentage of account
+        potentialProfitPercent = (potentialProfit / balance) * 100;
+
+        // Calculate potential ROI
+        const roi = (potentialProfit / balance) * 100;
+
+        // Calculate risk of margin call (approximate)
+        const priceMovementForMarginCall = (balance / positionSize);
+        const marginCallPercent = (priceMovementForMarginCall / entry) * 100;
 
         // Display results
         displayResults({
             positionSize,
             unit,
-            riskAmount,
-            riskPercent: risk,
+            potentialProfit,
+            potentialProfitPercent,
+            roi,
             positionValue,
+            marginRequired,
+            buyingPower,
             additionalInfo,
-            direction: entry > stop ? 'LONG' : 'SHORT'
+            direction,
+            priceChangePercent,
+            marginCallPercent,
+            leverage: leverageValue,
+            balance
         });
     }
 
     /**
      * Validate input values
      */
-    function validateInputs(balance, risk, entry, stop) {
+    function validateInputs(balance, leverage, entry, exit) {
         if (isNaN(balance) || balance <= 0) {
             return false;
         }
-        if (isNaN(risk) || risk <= 0 || risk > 100) {
+        if (isNaN(leverage) || leverage <= 0) {
             return false;
         }
         if (isNaN(entry) || entry <= 0) {
             return false;
         }
-        if (isNaN(stop) || stop <= 0) {
+        if (isNaN(exit) || exit <= 0) {
+            return false;
+        }
+        if (entry === exit) {
             return false;
         }
         return true;
@@ -148,22 +183,21 @@ document.addEventListener('DOMContentLoaded', function() {
         resultBox.style.display = 'block';
         resultBox.className = 'result-box fade-in';
 
+        const profitColor = data.potentialProfit >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
         resultBox.innerHTML = `
-            <h3>Recommended Position Size</h3>
+            <h3>Maximum Position Size & Profit Potential</h3>
 
             <div class="result-item">
                 <span class="result-label">Position Size:</span>
-                <span class="result-value large">${data.positionSize} ${data.unit}</span>
+                <span class="result-value large">${data.positionSize.toLocaleString()} ${data.unit}</span>
             </div>
 
             <div class="result-item">
                 <span class="result-label">Trade Direction:</span>
-                <span class="result-value">${data.direction}</span>
-            </div>
-
-            <div class="result-item">
-                <span class="result-label">Risk Amount:</span>
-                <span class="result-value">$${data.riskAmount.toFixed(2)} (${data.riskPercent}%)</span>
+                <span class="result-value" style="color: ${data.direction === 'LONG' ? 'var(--success-color)' : 'var(--danger-color)'}">
+                    ${data.direction}
+                </span>
             </div>
 
             <div class="result-item">
@@ -172,12 +206,65 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="result-item">
-                <span class="result-label">Additional Info:</span>
-                <span class="result-value">${data.additionalInfo}</span>
+                <span class="result-label">Buying Power (${data.leverage}x):</span>
+                <span class="result-value">$${data.buyingPower.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
 
+            <div class="result-item">
+                <span class="result-label">Margin Required:</span>
+                <span class="result-value">$${data.marginRequired.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+
+            <div style="border-top: 2px solid var(--primary-color); margin: 20px 0; padding-top: 20px;">
+                <div class="result-item">
+                    <span class="result-label">Potential Profit:</span>
+                    <span class="result-value large" style="color: ${profitColor}">
+                        $${data.potentialProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">Profit % of Account:</span>
+                    <span class="result-value" style="color: ${profitColor}">
+                        ${data.potentialProfitPercent.toFixed(2)}%
+                    </span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">ROI on Capital:</span>
+                    <span class="result-value" style="color: ${profitColor}">
+                        ${data.roi.toFixed(2)}%
+                    </span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">Target Price Move:</span>
+                    <span class="result-value">${data.priceChangePercent.toFixed(2)}%</span>
+                </div>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">Additional Info:</span>
+                <span class="result-value" style="font-size: 1rem;">${data.additionalInfo}</span>
+            </div>
+
+            ${data.marginCallPercent < 5 ? `
+                <div class="alert alert-danger mt-20">
+                    <strong>🚨 EXTREME RISK:</strong> With this leverage, a price move of only ${data.marginCallPercent.toFixed(2)}%
+                    against your position could trigger a margin call and wipe out your account!
+                </div>
+            ` : data.marginCallPercent < 10 ? `
+                <div class="alert alert-warning mt-20">
+                    <strong>⚠️ HIGH RISK:</strong> A price move of ${data.marginCallPercent.toFixed(2)}% against your position
+                    could trigger a margin call. Monitor your trade closely!
+                </div>
+            ` : ''}
+
             <div class="alert alert-info mt-20">
-                <strong>💡 Tip:</strong> This position size ensures you only risk ${data.riskPercent}% of your account balance if your stop loss is hit.
+                <strong>💡 Summary:</strong> You can buy ${data.positionSize.toLocaleString()} ${data.unit}
+                using ${data.leverage}x leverage. If your target is hit, you'll make
+                $${data.potentialProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                (${data.roi.toFixed(2)}% ROI).
             </div>
         `;
     }
@@ -214,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const values = JSON.parse(saved);
                 if (values.accountBalance) accountBalance.value = values.accountBalance;
-                if (values.riskPercent) riskPercent.value = values.riskPercent;
+                if (values.leverage) leverage.value = values.leverage;
                 if (values.instrumentType) instrumentType.value = values.instrumentType;
             } catch (e) {
                 console.error('Error loading saved values:', e);
@@ -228,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveValues() {
         const values = {
             accountBalance: accountBalance.value,
-            riskPercent: riskPercent.value,
+            leverage: leverage.value,
             instrumentType: instrumentType.value
         };
         localStorage.setItem('calculatorValues', JSON.stringify(values));
@@ -236,6 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Save values on input change
     accountBalance.addEventListener('change', saveValues);
-    riskPercent.addEventListener('change', saveValues);
+    leverage.addEventListener('change', saveValues);
     instrumentType.addEventListener('change', saveValues);
 });

@@ -11,7 +11,7 @@
         <!-- Header -->
         <div class="header">
             <h1>📊 Position Size Calculator</h1>
-            <p>Calculate optimal position sizes based on your risk management rules</p>
+            <p>Calculate maximum position size and potential profit for all-in trades</p>
         </div>
 
         <!-- Navigation -->
@@ -41,17 +41,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="risk-percent">Risk Per Trade (%) *</label>
-                        <input
-                            type="number"
-                            id="risk-percent"
-                            placeholder="1"
-                            step="0.1"
-                            min="0.1"
-                            max="100"
-                            value="1"
-                            required
-                        >
+                        <label for="leverage">Leverage *</label>
+                        <select id="leverage" required>
+                            <option value="1">1:1 (No Leverage)</option>
+                            <option value="2">1:2</option>
+                            <option value="5">1:5</option>
+                            <option value="10" selected>1:10</option>
+                            <option value="20">1:20</option>
+                            <option value="50">1:50</option>
+                            <option value="100">1:100</option>
+                            <option value="200">1:200</option>
+                            <option value="500">1:500</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -67,11 +68,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="stop-loss">Stop Loss Price *</label>
+                        <label for="exit-price">Exit Price (Target) *</label>
                         <input
                             type="number"
-                            id="stop-loss"
-                            placeholder="1.2450"
+                            id="exit-price"
+                            placeholder="1.2600"
                             step="0.00001"
                             min="0"
                             required
@@ -92,12 +93,17 @@
                 <div class="alert alert-info mt-20">
                     <strong>💡 How to use:</strong><br>
                     1. Enter your account balance<br>
-                    2. Set your risk percentage (recommended: 1-2%)<br>
+                    2. Select your leverage (broker dependent)<br>
                     3. Enter your planned entry price<br>
-                    4. Enter your stop loss price<br>
+                    4. Enter your exit/target price<br>
                     5. Select the instrument type<br>
                     <br>
-                    The calculator will automatically compute your optimal position size as you type.
+                    The calculator will show your maximum position size and potential profit.
+                </div>
+
+                <div class="alert alert-warning mt-20">
+                    <strong>⚠️ High Risk Warning:</strong> Going all-in on every trade carries extreme risk.
+                    A single losing trade can wipe out your entire account. Trade responsibly.
                 </div>
             </form>
 
@@ -105,30 +111,32 @@
             <div id="result-box" style="display: none;"></div>
         </div>
 
-        <!-- Risk Management Tips -->
+        <!-- All-In Trading Tips -->
         <div class="card">
-            <h2>Risk Management Best Practices</h2>
+            <h2>All-In Trading Strategy Tips</h2>
 
             <div class="grid grid-2">
                 <div>
                     <h3>✅ Do's</h3>
                     <ul style="line-height: 2; color: var(--text-secondary);">
-                        <li>Risk only 1-2% per trade</li>
-                        <li>Always use a stop loss</li>
-                        <li>Calculate position size before entering</li>
-                        <li>Keep risk consistent across trades</li>
+                        <li>Calculate exact position size before entering</li>
+                        <li>Know your potential profit in advance</li>
                         <li>Account for spread and slippage</li>
+                        <li>Have a clear exit target</li>
+                        <li>Monitor margin requirements closely</li>
+                        <li>Use the Daily Loss Monitor religiously</li>
                     </ul>
                 </div>
 
                 <div>
                     <h3>❌ Don'ts</h3>
                     <ul style="line-height: 2; color: var(--text-secondary);">
-                        <li>Don't risk more than 2% per trade</li>
-                        <li>Don't move stop loss against you</li>
-                        <li>Don't over-leverage your account</li>
-                        <li>Don't ignore your calculated size</li>
-                        <li>Don't trade without a plan</li>
+                        <li>Don't exceed your broker's margin limits</li>
+                        <li>Don't trade without checking leverage</li>
+                        <li>Don't ignore market volatility</li>
+                        <li>Don't revenge trade after a loss</li>
+                        <li>Don't use maximum leverage blindly</li>
+                        <li>Don't forget about swap/overnight fees</li>
                     </ul>
                 </div>
             </div>
@@ -139,20 +147,28 @@
             <h2>Position Sizing Formula Reference</h2>
 
             <div style="background: var(--bg-color); padding: 20px; border-radius: 8px; margin-top: 10px;">
-                <h3>Basic Formula</h3>
+                <h3>Maximum Position Formula</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                    <strong>Position Size = Risk Amount / Stop Loss Distance</strong>
+                    <strong>Position Size = (Account Balance × Leverage) / Entry Price</strong>
+                </p>
+
+                <h3>Profit Calculation</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                    <strong>Potential Profit = Position Size × (Exit Price - Entry Price)</strong>
                 </p>
 
                 <h3>Where:</h3>
                 <ul style="line-height: 2; color: var(--text-secondary);">
-                    <li><strong>Risk Amount</strong> = Account Balance × Risk Percentage</li>
-                    <li><strong>Stop Loss Distance</strong> = |Entry Price - Stop Loss Price|</li>
+                    <li><strong>Account Balance</strong> = Your total available capital</li>
+                    <li><strong>Leverage</strong> = Broker leverage (e.g., 10, 50, 100)</li>
+                    <li><strong>Entry Price</strong> = Your planned entry point</li>
+                    <li><strong>Exit Price</strong> = Your profit target</li>
                 </ul>
 
-                <div class="alert alert-warning mt-20">
-                    <strong>⚠️ Important:</strong> For Forex, the calculation accounts for pip values and lot sizes.
-                    For stocks and indices, it calculates the number of shares/units directly.
+                <div class="alert alert-danger mt-20">
+                    <strong>🚨 Critical Warning:</strong> Using full leverage means a small price move against you
+                    can result in a margin call and complete account loss. This is an extremely high-risk strategy.
+                    Only trade with money you can afford to lose entirely.
                 </div>
             </div>
         </div>
